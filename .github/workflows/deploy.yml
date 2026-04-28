@@ -91,6 +91,25 @@ jobs:
           aws s3 cp producer.zip s3://${{ secrets.ARTIFACT_BUCKET }}/producer.zip
           aws s3 cp consumer.zip s3://${{ secrets.ARTIFACT_BUCKET }}/consumer.zip
 
+      - name: Validate CloudFormation
+        shell: powershell
+        run: |
+          aws cloudformation validate-template `
+            --template-body file://infra/template.yml
+
+      - name: Delete Failed Rollback Stack If Exists
+        shell: powershell
+        run: |
+          $status = aws cloudformation describe-stacks `
+            --stack-name sqs-lambda-stack `
+            --query "Stacks[0].StackStatus" `
+            --output text 2>$null
+
+          if ($status -eq "ROLLBACK_COMPLETE") {
+            aws cloudformation delete-stack --stack-name sqs-lambda-stack
+            aws cloudformation wait stack-delete-complete --stack-name sqs-lambda-stack
+          }
+
       - name: Deploy CloudFormation
         shell: powershell
         run: |
@@ -106,4 +125,4 @@ jobs:
         run: |
           aws cloudformation describe-stack-events `
             --stack-name sqs-lambda-stack `
-            --max-items 20
+            --max-items 30

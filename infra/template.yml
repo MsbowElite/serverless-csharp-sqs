@@ -13,11 +13,6 @@ Resources:
     Properties:
       QueueName: app-main-queue
 
-  DeadLetterQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: app-main-dlq
-
   ProducerRole:
     Type: AWS::IAM::Role
     Properties:
