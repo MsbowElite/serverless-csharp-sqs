@@ -1,3 +1,4 @@
+# infra/template.yml
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Two .NET 8 Lambdas communicating through SQS
 

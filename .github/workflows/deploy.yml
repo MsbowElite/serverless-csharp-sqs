@@ -1,3 +1,4 @@
+# .github/workflows/deploy.yml
 name: CI-CD AWS Lambdas
 
 on:
@@ -65,7 +66,7 @@ jobs:
             -o publish\producer `
             /p:PublishReadyToRun=false
 
-          Compress-Archive -Path publish\producer\* -DestinationPath producer.zip
+          Compress-Archive -Path publish\producer\* -DestinationPath producer.zip -Force
 
       - name: Publish Consumer
         shell: powershell
@@ -75,7 +76,7 @@ jobs:
             -o publish\consumer `
             /p:PublishReadyToRun=false
 
-          Compress-Archive -Path publish\consumer\* -DestinationPath consumer.zip
+          Compress-Archive -Path publish\consumer\* -DestinationPath consumer.zip -Force
 
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -98,3 +99,11 @@ jobs:
             --template-file infra/template.yml `
             --capabilities CAPABILITY_NAMED_IAM `
             --parameter-overrides ArtifactBucket=${{ secrets.ARTIFACT_BUCKET }}
+
+      - name: Show Stack Events on Failure
+        if: failure()
+        shell: powershell
+        run: |
+          aws cloudformation describe-stack-events `
+            --stack-name sqs-lambda-stack `
+            --max-items 20
