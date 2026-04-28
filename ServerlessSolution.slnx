@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ConsumerLambda/ConsumerLambda.csproj" />
+    <Project Path="src/ProducerLambda/ProducerLambda.csproj" />
+  </Folder>
+</Solution>
