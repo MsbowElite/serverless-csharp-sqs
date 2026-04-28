@@ -101,6 +101,7 @@ Resources:
 
   QueueTrigger:
     Type: AWS::Lambda::EventSourceMapping
+    DependsOn: ConsumerLambda
     Properties:
       EventSourceArn: !GetAtt MainQueue.Arn
       FunctionName: !Ref ConsumerLambda
@@ -110,9 +111,3 @@ Resources:
 Outputs:
   QueueUrl:
     Value: !Ref MainQueue
-
-  ProducerLambdaName:
-    Value: !Ref ProducerLambda
-
-  ConsumerLambdaName:
-    Value: !Ref ConsumerLambda
