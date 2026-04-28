@@ -97,19 +97,6 @@ jobs:
           aws cloudformation validate-template `
             --template-body file://infra/template.yml
 
-      - name: Delete Failed Rollback Stack If Exists
-        shell: powershell
-        run: |
-          $status = aws cloudformation describe-stacks `
-            --stack-name sqs-lambda-stack `
-            --query "Stacks[0].StackStatus" `
-            --output text 2>$null
-
-          if ($status -eq "ROLLBACK_COMPLETE") {
-            aws cloudformation delete-stack --stack-name sqs-lambda-stack
-            aws cloudformation wait stack-delete-complete --stack-name sqs-lambda-stack
-          }
-
       - name: Deploy CloudFormation
         shell: powershell
         run: |
@@ -123,6 +110,13 @@ jobs:
         if: failure()
         shell: powershell
         run: |
-          aws cloudformation describe-stack-events `
-            --stack-name sqs-lambda-stack `
-            --max-items 30
+          $exists = aws cloudformation list-stacks `
+            --stack-status-filter CREATE_FAILED CREATE_IN_PROGRESS ROLLBACK_COMPLETE ROLLBACK_FAILED UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE `
+            --query "StackSummaries[?StackName=='sqs-lambda-stack'].StackName" `
+            --output text
+
+          if ($exists -eq "sqs-lambda-stack") {
+            aws cloudformation describe-stack-events `
+              --stack-name sqs-lambda-stack `
+              --max-items 30
+          }

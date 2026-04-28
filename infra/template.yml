@@ -16,7 +16,6 @@ Resources:
   ProducerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: producer-lambda-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -41,7 +40,6 @@ Resources:
   ConsumerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: consumer-lambda-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -68,7 +66,6 @@ Resources:
   ProducerLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: producer-lambda
       Runtime: dotnet8
       MemorySize: 512
       Timeout: 30
@@ -84,7 +81,6 @@ Resources:
   ConsumerLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: consumer-lambda
       Runtime: dotnet8
       MemorySize: 512
       Timeout: 30
