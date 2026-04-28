@@ -66,6 +66,7 @@ Resources:
   ProducerLambda:
     Type: AWS::Lambda::Function
     Properties:
+      FunctionName: producer-lambda
       Runtime: dotnet8
       MemorySize: 512
       Timeout: 30
@@ -81,6 +82,7 @@ Resources:
   ConsumerLambda:
     Type: AWS::Lambda::Function
     Properties:
+      FunctionName: consumer-lambda
       Runtime: dotnet8
       MemorySize: 512
       Timeout: 30
@@ -98,7 +100,3 @@ Resources:
       FunctionName: !Ref ConsumerLambda
       BatchSize: 10
       Enabled: true
-
-Outputs:
-  QueueUrl:
-    Value: !Ref MainQueue

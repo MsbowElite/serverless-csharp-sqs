@@ -91,12 +91,6 @@ jobs:
           aws s3 cp producer.zip s3://${{ secrets.ARTIFACT_BUCKET }}/producer.zip
           aws s3 cp consumer.zip s3://${{ secrets.ARTIFACT_BUCKET }}/consumer.zip
 
-      - name: Validate CloudFormation
-        shell: powershell
-        run: |
-          aws cloudformation validate-template `
-            --template-body file://infra/template.yml
-
       - name: Deploy CloudFormation
         shell: powershell
         run: |
@@ -106,17 +100,25 @@ jobs:
             --capabilities CAPABILITY_NAMED_IAM `
             --parameter-overrides ArtifactBucket=${{ secrets.ARTIFACT_BUCKET }}
 
-      - name: Show Stack Events on Failure
-        if: failure()
+      # FORCE CODE UPDATE EVEN IF CLOUDFORMATION SEES NO TEMPLATE CHANGE
+      - name: Update Producer Lambda Code
         shell: powershell
         run: |
-          $exists = aws cloudformation list-stacks `
-            --stack-status-filter CREATE_FAILED CREATE_IN_PROGRESS ROLLBACK_COMPLETE ROLLBACK_FAILED UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE `
-            --query "StackSummaries[?StackName=='sqs-lambda-stack'].StackName" `
-            --output text
+          aws lambda update-function-code `
+            --function-name producer-lambda `
+            --s3-bucket ${{ secrets.ARTIFACT_BUCKET }} `
+            --s3-key producer.zip
 
-          if ($exists -eq "sqs-lambda-stack") {
-            aws cloudformation describe-stack-events `
-              --stack-name sqs-lambda-stack `
-              --max-items 30
-          }
+      - name: Update Consumer Lambda Code
+        shell: powershell
+        run: |
+          aws lambda update-function-code `
+            --function-name consumer-lambda `
+            --s3-bucket ${{ secrets.ARTIFACT_BUCKET }} `
+            --s3-key consumer.zip
+
+      - name: Wait For Lambda Updates
+        shell: powershell
+        run: |
+          aws lambda wait function-updated --function-name producer-lambda
+          aws lambda wait function-updated --function-name consumer-lambda
