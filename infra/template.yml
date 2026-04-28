@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Serverless SQS Lambdas
+Description: SQS + 2 Lambdas
 
 Resources:
 
@@ -16,8 +16,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - lambda.amazonaws.com
+              Service: lambda.amazonaws.com
             Action: sts:AssumeRole
 
       ManagedPolicyArns:
@@ -29,8 +28,7 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action:
-                  - sqs:SendMessage
+                Action: sqs:SendMessage
                 Resource: "*"
 
   ConsumerRole:
@@ -41,8 +39,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - lambda.amazonaws.com
+              Service: lambda.amazonaws.com
             Action: sts:AssumeRole
 
       ManagedPolicyArns:
@@ -60,6 +57,32 @@ Resources:
                   - sqs:GetQueueAttributes
                 Resource: "*"
 
-Outputs:
-  QueueUrl:
-    Value: !Ref Queue
+  ProducerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: producer-lambda
+      Runtime: dotnet8
+      Handler: ProducerLambda::ProducerLambda.Function::FunctionHandler
+      Role: !GetAtt ProducerRole.Arn
+      Code:
+        ZipFile: |
+          placeholder
+
+  ConsumerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: consumer-lambda
+      Runtime: dotnet8
+      Handler: ConsumerLambda::ConsumerLambda.Function::FunctionHandler
+      Role: !GetAtt ConsumerRole.Arn
+      Code:
+        ZipFile: |
+          placeholder
+
+  QueueTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt Queue.Arn
+      FunctionName: !Ref ConsumerLambda
+      BatchSize: 10
+      Enabled: true
