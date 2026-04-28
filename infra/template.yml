@@ -1,16 +1,26 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: SQS + 2 Lambdas
+Description: Two .NET 8 Lambdas communicating through SQS
+
+Parameters:
+  ArtifactBucket:
+    Type: String
 
 Resources:
 
-  Queue:
+  MainQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: app-main-queue
 
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: app-main-dlq
+
   ProducerRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: producer-lambda-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -28,12 +38,14 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: sqs:SendMessage
-                Resource: "*"
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt MainQueue.Arn
 
   ConsumerRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: consumer-lambda-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -55,34 +67,51 @@ Resources:
                   - sqs:ReceiveMessage
                   - sqs:DeleteMessage
                   - sqs:GetQueueAttributes
-                Resource: "*"
+                Resource: !GetAtt MainQueue.Arn
 
   ProducerLambda:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: producer-lambda
       Runtime: dotnet8
-      Handler: ProducerLambda::ProducerLambda.Function::FunctionHandler
+      MemorySize: 512
+      Timeout: 30
       Role: !GetAtt ProducerRole.Arn
+      Handler: ProducerLambda::ProducerLambda.Function::FunctionHandler
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref MainQueue
       Code:
-        ZipFile: |
-          placeholder
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: producer.zip
 
   ConsumerLambda:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: consumer-lambda
       Runtime: dotnet8
-      Handler: ConsumerLambda::ConsumerLambda.Function::FunctionHandler
+      MemorySize: 512
+      Timeout: 30
       Role: !GetAtt ConsumerRole.Arn
+      Handler: ConsumerLambda::ConsumerLambda.Function::FunctionHandler
       Code:
-        ZipFile: |
-          placeholder
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: consumer.zip
 
   QueueTrigger:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
-      EventSourceArn: !GetAtt Queue.Arn
+      EventSourceArn: !GetAtt MainQueue.Arn
       FunctionName: !Ref ConsumerLambda
       BatchSize: 10
       Enabled: true
+
+Outputs:
+  QueueUrl:
+    Value: !Ref MainQueue
+
+  ProducerLambdaName:
+    Value: !Ref ProducerLambda
+
+  ConsumerLambdaName:
+    Value: !Ref ConsumerLambda

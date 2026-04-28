@@ -1,4 +1,4 @@
-name: CI-CD AWS Lambda
+name: CI-CD AWS Lambdas
 
 on:
   push:
@@ -6,41 +6,33 @@ on:
       - main
 
 jobs:
-  build-analyze-deploy:
+  deploy:
     runs-on: windows-latest
     environment: Main
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: 17
 
-      - name: Setup .NET 8
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Cache Sonar Packages
-        uses: actions/cache@v4
-        with:
-          path: ~\sonar\cache
-          key: ${{ runner.os }}-sonar
-
-      - name: Install Sonar Scanner
+      - name: Install SonarScanner
         shell: powershell
         run: |
           dotnet tool install --global dotnet-sonarscanner
           echo "$env:USERPROFILE\.dotnet\tools" | Out-File -Append -FilePath $env:GITHUB_PATH
-
-      - name: Restore
-        run: dotnet restore
 
       - name: Sonar Begin
         shell: powershell
@@ -50,6 +42,9 @@ jobs:
             /o:"lucasrsena" `
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" `
             /d:sonar.host.url="https://sonarcloud.io"
+
+      - name: Restore
+        run: dotnet restore
 
       - name: Build
         run: dotnet build --configuration Release --no-restore
@@ -62,12 +57,30 @@ jobs:
         run: |
           dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
-      - name: Configure AWS Credentials
+      - name: Publish Producer
+        shell: powershell
+        run: |
+          dotnet publish .\src\ProducerLambda -c Release -o publish\producer
+          Compress-Archive -Path publish\producer\* -DestinationPath producer.zip
+
+      - name: Publish Consumer
+        shell: powershell
+        run: |
+          dotnet publish .\src\ConsumerLambda -c Release -o publish\consumer
+          Compress-Archive -Path publish\consumer\* -DestinationPath consumer.zip
+
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload Artifacts to S3
+        shell: powershell
+        run: |
+          aws s3 cp producer.zip s3://${{ secrets.ARTIFACT_BUCKET }}/producer.zip
+          aws s3 cp consumer.zip s3://${{ secrets.ARTIFACT_BUCKET }}/consumer.zip
 
       - name: Deploy CloudFormation
         shell: powershell
@@ -75,4 +88,5 @@ jobs:
           aws cloudformation deploy `
             --stack-name sqs-lambda-stack `
             --template-file infra/template.yml `
-            --capabilities CAPABILITY_NAMED_IAM
+            --capabilities CAPABILITY_NAMED_IAM `
+            --parameter-overrides ArtifactBucket=${{ secrets.ARTIFACT_BUCKET }}
