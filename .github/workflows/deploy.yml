@@ -60,13 +60,21 @@ jobs:
       - name: Publish Producer
         shell: powershell
         run: |
-          dotnet publish .\src\ProducerLambda -c Release -o publish\producer
+          dotnet publish .\src\ProducerLambda `
+            -c Release `
+            -o publish\producer `
+            /p:PublishReadyToRun=false
+
           Compress-Archive -Path publish\producer\* -DestinationPath producer.zip
 
       - name: Publish Consumer
         shell: powershell
         run: |
-          dotnet publish .\src\ConsumerLambda -c Release -o publish\consumer
+          dotnet publish .\src\ConsumerLambda `
+            -c Release `
+            -o publish\consumer `
+            /p:PublishReadyToRun=false
+
           Compress-Archive -Path publish\consumer\* -DestinationPath consumer.zip
 
       - name: Configure AWS
