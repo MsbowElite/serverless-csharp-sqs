@@ -1,33 +1,26 @@
+// src/ProducerLambda/Function.cs
 using Amazon.Lambda.Core;
-using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 
-[assembly: LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
+[assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
 
 namespace ProducerLambda;
 
 public class Function
 {
-    private readonly IAmazonSQS _sqs;
+    private readonly AmazonSQSClient _sqs = new();
 
-    public Function()
-    {
-        _sqs = new AmazonSQSClient();
-    }
-
-    public async Task<string> FunctionHandler()
+    public async Task<string> FunctionHandler(object input, ILambdaContext context)
     {
         var queueUrl = Environment.GetEnvironmentVariable("QUEUE_URL");
 
-        var message = new SendMessageRequest
+        await _sqs.SendMessageAsync(new SendMessageRequest
         {
             QueueUrl = queueUrl,
-            MessageBody = $"Message generated at {DateTime.UtcNow}"
-        };
+            MessageBody = $"message created at {DateTime.UtcNow:O}"
+        });
 
-        await _sqs.SendMessageAsync(message);
-
-        return "Message sent successfully";
+        return "sent";
     }
 }
